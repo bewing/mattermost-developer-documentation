@@ -75,12 +75,30 @@ In order to be able to pause the debugger for more than 5 seconds, two modificat
 
 1. The plugin health check job needs to be disabled. This can be done by setting the server config setting `PluginSettings.EnableHealthCheck` to `false`. Note that if your plugin crashes, you'll need to restart it, using `make reset` for example. This command will also kill any currently running `delve` process. If you want to continue debugging with `delve`, you'll need to run `make attach-headless` again after restarting the plugin.
 
-2. The `go-plugin`'s RPC client needs to be configured with a larger timeout duration. You can change the code at {{< newtabref href="https://github.com/mattermost/mattermost/blob/bf03f391e635b0b9b129768cec5ea13c571744fa/vendor/github.com/hashicorp/go-plugin/rpc_client.go#L63" title="server/vendor/github.com/hashicorp/rpc_client.go" >}} to increase the duration. Here's the change you can make to extend the timeout to 5 minutes:
+2. The `go-plugin`'s RPC client needs to be configured with a larger timeout duration. You can download a local copy to change the code and override go.mod with a `replace` directive:
+
+    ```bash
+    git clone https://github.com/hashicorp/go-plugin
+    cd go-plugin
+    git checkout <version of go-plugin used by your local codebase>
+    ```
+
+    Edit `go-plugin/rpc_client.go` to override the timeout
 
     ```go
     sessionConfig := yamux.DefaultConfig()
     sessionConfig.EnableKeepAlive = true
     sessionConfig.ConnectionWriteTimeout = time.Minute * 5
-    
+
     mux, err := yamux.Client(conn, sessionConfig)
+    ```
+
+    And update `mattermost/server/plugin/go.mod`
+
+    ```go
+    module github.com/mattermost/mattermost/server/public
+
+    go 1.20
+
+    replace github.com/hashicorp/go-plugin => <wherever you cloned go-plugin to>
     ```
